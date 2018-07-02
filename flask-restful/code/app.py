@@ -1,8 +1,9 @@
 from flask import Flask 
-from flask_restful import Resource, Api, request
+from flask_restful import Resource, Api, request, reqparse
 from flask_jwt import JWT, jwt_required
 
 from security import authenticate, identity
+from user import UserRegister
 
 app = Flask(__name__)
 api = Api(app)
@@ -14,6 +15,13 @@ items = []
 
 
 class Item(Resource):
+	parser = reqparse.RequestParser()
+	parser.add_argument('price',
+		type=float,
+		required=True,
+		help="This field cannot be left blank."
+	)
+
 	@jwt_required()
 	def get(self, name):
 
@@ -27,7 +35,7 @@ class Item(Resource):
 
 			return {"message": "An item with name '{}' already exists.".format(name)}, 400
 
-		data = request.get_json(silent=True)
+		data = Item.parser.parse_args()
 
 		item = {"name": name, "price": data["price"]}
 		items.append(item)
@@ -40,7 +48,8 @@ class Item(Resource):
 		return {"message": "Item Deleted"}
 
 	def put(self, name):
-		data = request.get_json()
+		data = Item.parser.parse_args()
+
 		item = next(filter(lambda x: x['name'] == name, items), None)
 		if item is None: 
 			item = {'name': name, 'price': data['price']}
@@ -58,5 +67,6 @@ class ItemList(Resource):
 
 api.add_resource(Item, '/item/<string:name>')
 api.add_resource(ItemList, "/items")
+api.add_resource(UserRegister, "/register")
 
 app.run(port=3000, debug = True)
